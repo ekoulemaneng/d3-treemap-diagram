@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>D3 Treemap Diagram</title>
+        <meta name="description" content="Treemap Diagram with D3JS">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            /*---------------------------------------Reset CSS-----------------------------------------*/
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed, 
+figure, figcaption, footer, header, hgroup, 
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video {
+margin: 0;
+padding: 0;
+border: 0;
+font-size: 100%;
+font: inherit;
+vertical-align: baseline;
+}
+/* HTML5 display-role reset for older browsers */
+article, aside, details, figcaption, figure, 
+footer, header, hgroup, menu, nav, section {
+display: block;
+}
+body {
+line-height: 1;
+}
+ol, ul {
+list-style: none;
+}
+blockquote, q {
+quotes: none;
+}
+blockquote:before, blockquote:after,
+q:before, q:after {
+content: '';
+content: none;
+}
+table {
+border-collapse: collapse;
+border-spacing: 0;
+}
+/*---------------------------------------------------------------*/
+
+nav ul {
+    text-align: center;
+    box-sizing: content-box;
+    padding: 1rem;
+}
+
+nav ul li {
+    display: inline;
+    box-sizing: content-box;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-top: .3rem;
+    padding-bottom: .3rem;
+    background-color: grey;
+    font-weight: bold;
+    color: white;
+    font-size: 1.25rem;
+    margin-left: 1rem;
+    margin-right: 1rem;
+    border-radius: .7rem;
+}
+
+nav ul li:hover {
+    background-color: transparent;
+    color: black;
+    border: 3px solid black;
+}
+
+
+h1#title, h2#description {
+    text-align: center;
+    margin: .75rem;
+}
+
+h1#title {
+    font-size: 1.75rem;
+    font-weight: bold;
+}
+
+h2#description {
+    font-size: 1.25rem;
+}
+
+svg {
+    display: block;
+    margin-left: auto;
+    margin: auto;
+}
+
+rect.tile {
+    stroke: white;
+}
+
+#treemap text {
+    font-size: .7rem;
+}
+
+#legend text {
+    font-size: 1.15rem;
+}
+
+
+element.style {
+    visibility: hidden;
+    left: 1127px;
+    top: 580px;
+}
+#tooltip {
+    position: absolute;
+    background-color: black;
+    color: white;
+    line-height: 1.25rem;
+    box-sizing: content-box;
+    padding: .5rem;
+    opacity: .8;
+    border-radius: .5rem;
+}
+        </style>
+    </head>
+    <body>
+        <!--[if lt IE 7]>
+            <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="#">upgrade your browser</a> to improve your experience.</p>
+        <![endif]-->
+
+        <nav>
+            <ul>
+                <li id="kickstarter">Kickstarter Data Set</li>
+                <li id="videogame">Video Game Data Set</li>
+                <li id="movie">Movie Data Set</li>
+            </ul>
+        </nav>
+        <main>
+            <h1 id="title"></h1>
+            <h2 id="description"></h2>
+        </main>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.13.0/d3.min.js"></script>
+        <script>
+             let KickstarterPledgesURL = 'https://cdn.rawgit.com/freeCodeCamp/testable-projects-fcc/a80ce8f9/src/data/tree_map/kickstarter-funding-data.json';
+let MovieSalesURL = 'https://cdn.rawgit.com/freeCodeCamp/testable-projects-fcc/a80ce8f9/src/data/tree_map/movie-data.json';
+let VideoGameSalesURL = 'https://cdn.rawgit.com/freeCodeCamp/testable-projects-fcc/a80ce8f9/src/data/tree_map/video-game-sales-data.json';
+let colors = ['#4C92C3', '#BED2ED', '#FB983D', '#FEC993', '#56B356', '#ADE5A1', '#DE5253', '#F9ACAA', '#A985C9', '#D1C0DD', '#A3786F', '#D0B0A9', '#E992CE', '#F9C5DB', '#999999', '#D2D2D2', '#D2D2D2', '#C9C94E', '#E2E2A4'];
+
+let width = 1100, height = 800;
+
+function buildCategoryTreemapArray(node) {
+    let array = node.leaves();
+    let arrayCategory = [];
+    let n = array.length;
+    for (let i = 0; i < n; i++) {
+        let bool = arrayCategory.includes(array[i].data.category);
+        if (!bool) arrayCategory.push(array[i].data.category);
+    }
+    return arrayCategory ;
+} 
+
+function attributeColor(array, category) {
+    let index = array.indexOf(category);
+    return colors[index];
+}
+
+function row(n) {
+    for (var i = 1;; i++) {
+        if (n <= 4 * i - 1) break;
+    }
+    return i - 1;
+}
+
+d3.queue().defer(d3.json, KickstarterPledgesURL).defer(d3.json, MovieSalesURL).defer(d3.json, VideoGameSalesURL).await(buildTreemapDiagrams);
+
+function buildTreemapDiagrams(error, KickstarterPledgesData, MovieSalesData, VideoGameSalesData) {
+    if (error) throw console.error;
+
+    window.onload = buildKickstarterTreemap();
+    d3.select('#kickstarter').on('click',buildKickstarterTreemap);
+    d3.select('#movie').on('click', buildMovieTreemap);
+    d3.select('#videogame').on('click', buildVideoGameTreemap);
+
+
+    function buildKickstarterTreemap(event) {
+        let rawData = KickstarterPledgesData;
+        d3.select('#title').text('Kickstarter Pledges');
+        d3.select('#description').text('Top 100 Most Pledged Kickstarter Campaigns Grouped By Category');
+        d3.select("svg").remove();
+        d3.select('#tooltip').remove();
+        buildAllTreemaps(rawData);
+    }
+    
+    function buildMovieTreemap(event) {
+        let rawData = MovieSalesData;
+        d3.select('#title').text('Movie Sales');
+        d3.select('#description').text('Top 100 Highest Grossing Movies Grouped By Genre');
+        d3.select("svg").remove();
+        d3.select('#tooltip').remove();
+        buildAllTreemaps(rawData);
+    }
+    
+    function buildVideoGameTreemap(event) {
+        let rawData = VideoGameSalesData;
+        d3.select('#title').text('Video Game Sales');
+        d3.select('#description').text('Top 100 Most Sold Video Games Grouped by Platform');
+        d3.select("svg").remove();
+        d3.select('#tooltip').remove();
+        buildAllTreemaps(rawData);
+    }
+
+    function buildAllTreemaps(salesData) {
+
+        let svgContainer = d3.select('main').append('svg').attr('width', width).attr('height', height);
+
+        svgContainer.append('g').attr('id', 'treemap');
+        svgContainer.append('g').attr('id', 'legend');
+
+        let rootNode = d3.hierarchy(salesData).sum(d => d.hasOwnProperty('value') ? parseFloat(d.value) : 0).sort((a, b) => b.height - a.height || b.value - a.value);
+    
+        let arrayCategory = buildCategoryTreemapArray(rootNode);
+    
+        let treemapLayout = d3.treemap().size([width, height - 200]);
+    
+        treemapLayout(rootNode);
+    
+        let tooltip = d3.select('main').append('div').attr('id', 'tooltip').style('visibility', 'hidden');
+    
+        let tile = d3.select('#treemap').selectAll('g').data(rootNode.descendants()).enter().append('g');
+    
+        tile.append('rect').classed('tile', true)
+        .attr('data-name', d => d.data.name).attr('data-category', d => d.data.hasOwnProperty('category') ? d.data.category : d.data.name).attr('data-value', d => d.value)
+        .attr('x', d => d.x0).attr('y', d => d.y0)
+        .attr('width', d => d.x1 - d.x0).attr('height', d => d.y1 - d.y0)
+        .attr('fill', d => attributeColor(arrayCategory, d.data.category))
+        .on('mouseover', d => 
+            tooltip.attr('data-value', d.data.value).style('visibility', 'visible')
+            .style('left', (d3.event.pageX + 15) + 'px').style('top', (d3.event.pageY - 15) + 'px')
+        )
+        .on('mousemove', d => 
+            tooltip.attr('data-value', d.data.value)
+            .style('left', (d3.event.pageX + 15) + 'px').style('top', (d3.event.pageY - 15) + 'px')
+            .html('Name: ' + d.data.name + '<br>Category: ' + d.data.category + '<br>Value: ' + d.data.value)
+        )
+        .on('mouseout', d => tooltip.style('visibility', 'hidden'));
+    
+        tile.append('text').text(d => d.data.name.slice(0, 10))
+        .attr('x', d => d.x0 + 5).attr('y', d => d.y0 + 10);
+    
+        let legendItem = d3.select('#legend').selectAll('g').data(arrayCategory).enter().append('g');
+    
+        legendItem.append('rect').classed('legend-item', true)
+        .attr('height', 15).attr('width', 15).attr('fill', (d, i) => colors[i])
+        .attr('x', (d, i) => 200 + 200 * (i % 4)).attr('y', (d, i) => 625 + 25 * row(i));
+    
+        legendItem.append('text').text(d => d)
+        .attr('x', (d, i) => 225 + 200 * (i % 4)).attr('y', (d, i) => 638 + 25 * row(i));
+    }
+};       
+        </script>
+        <script src="https://cdn.freecodecamp.org/testable-projects-fcc/v1/bundle.js" async defer></script>
+    </body>
+</html>
